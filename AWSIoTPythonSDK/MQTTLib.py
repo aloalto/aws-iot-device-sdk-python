@@ -513,6 +513,8 @@ class AWSIoTMQTTClient:
         """
         # mqttCore.unsubscribe(topic)
         return self._mqttCore.unsubscribe(topic)
+    def addCustomCallback(self, event, callback):
+        self._mqttCore.addCustomCallback(event, callback)
 
 
 class AWSIoTMQTTShadowClient:
@@ -899,3 +901,5 @@ class AWSIoTMQTTShadowClient:
         """        
         # Return the internal AWSIoTMQTTClient instance
         return self._AWSIoTMQTTClient
+    def addCustomCallback(self, event, callback):
+        self._AWSIoTMQTTClient._mqttCore.addCustomCallback(event, callback)

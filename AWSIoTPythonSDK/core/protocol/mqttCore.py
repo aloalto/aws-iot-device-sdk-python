@@ -114,12 +114,16 @@ class mqttCore:
         if not self._subscribePool:
             offlinePublishQueueDraining = threading.Thread(target=self._doPublishDraining)
             offlinePublishQueueDraining.start()
+        if self._customCallback.get("on_connect"):
+            self._customCallback["on_connect"](rc)
         self._log.debug("Connect result code " + str(rc))
 
     def on_disconnect(self, client, userdata, rc):
         self._connectResultCode = sys.maxsize
         self._disconnectResultCode = rc
         self._drainingComplete = False  # Draining status should be reset when disconnect happens
+        if self._customCallback.get("on_disconnect"):
+            self._customCallback["on_disconnect"](rc)
         self._log.debug("Disconnect result code " + str(rc))
 
     def on_subscribe(self, client, userdata, mid, granted_qos):
@@ -134,14 +138,20 @@ class mqttCore:
                 offlinePublishQueueDraining.start()
                 self._resubscribeCount = -1  # Recover the context for resubscribe
         self._subscribeSent = True
+        if self._customCallback.get("on_subscribe"):
+            self._customCallback["on_subscribe"](mid)
         self._log.debug("Subscribe request " + str(mid) + " sent.")
 
     def on_unsubscribe(self, client, userdata, mid):
         self._unsubscribeSent = True
+        if self._customCallback.get("on_unsubscribe"):
+            self._customCallback["on_unsubscribe"](mid)
         self._log.debug("Unsubscribe request " + str(mid) + " sent.")
 
     def on_message(self, client, userdata, message):
         # Generic message callback
+        if self._customCallback.get("on_message"):
+            self._customCallback["on_message"](message.payload, message.topic)
         self._log.warn("Received (No custom callback registered) : message: " + str(message.payload) + " from topic: " + str(message.topic))
 
     ####### API starts here #######
@@ -165,6 +175,7 @@ class mqttCore:
         self._pahoClient.on_subscribe = self.on_subscribe
         self._pahoClient.on_unsubscribe = self.on_unsubscribe
         self._log.debug("Register Paho MQTT Client callbacks.")
+        self._customCallback = dict()
         # Tool data structure
         self._connectResultCode = sys.maxsize
         self._disconnectResultCode = sys.maxsize
@@ -457,3 +468,5 @@ class mqttCore:
         self._log.debug("Recover unsubscribe context for the next request: unsubscribeSent: " + str(self._unsubscribeSent))
         self._unsubscribeLock.release()
         return ret
+    def addCustomCallback(self, event, callback):
+        self._customCallback[event] = callback
